@@ -13,10 +13,10 @@ public class TileObject : MonoBehaviour {
 	[SerializeField] [HideInInspector] protected List<Sprite> rightSprites = new List<Sprite> ();
 
 	// Terrain Grid Reference
-	[SerializeField] protected TileObject aboveTile;
-	[SerializeField] protected TileObject belowTile;
-	[SerializeField] protected TileObject leftTile;
-	[SerializeField] protected TileObject rightTile;
+	[SerializeField] public TileObject aboveTile;
+	[SerializeField] public TileObject belowTile;
+	[SerializeField] public TileObject leftTile;
+	[SerializeField] public TileObject rightTile;
 
 	#region Properties
 
@@ -142,6 +142,7 @@ public class TileObject : MonoBehaviour {
 
 		// set its sprite
 		sr.sprite = getSpriteImage (pos, "default");
+		sr.sortingOrder = GetComponent<SpriteRenderer> ().sortingOrder;
 
 		// set its position
 		newGo.transform.SetParent (transform);
@@ -162,31 +163,28 @@ public class TileObject : MonoBehaviour {
 
 	#region Tile Placing Functions
 
-	public void SetTile (TileObject above, TileObject below, TileObject left, TileObject right, int sortingOrder) {
-
-		GetComponent<SpriteRenderer> ().sortingOrder = sortingOrder;
+	public void SetTile (TileObject above, TileObject below, TileObject left, TileObject right) {
 
 		// set each of the tile references
 		aboveTile = SetTileReference (above, Vector3.up);
-		if (aboveTile != null) {
-			aboveTile.SetTileReference (this, Vector3.down);
+		if (above != null) {
+			above.belowTile = above.SetTileReference (this, Vector3.down);
 		}
 		belowTile = SetTileReference (below, Vector3.down);
-		if (belowTile != null) {
-			belowTile.SetTileReference (this, Vector3.up);
+		if (below != null) {
+			below.aboveTile = below.SetTileReference (this, Vector3.up);
 		}
 		leftTile = SetTileReference (left, Vector3.left);
-		if (leftTile != null) {
-			leftTile.SetTileReference (this, Vector3.right);
+		if (left != null) {
+			left.rightTile = left.SetTileReference (this, Vector3.right);
 		}
 		rightTile = SetTileReference (right, Vector3.right);
-		if (rightTile != null) {
-			rightTile.SetTileReference (this, Vector3.left);
+		if (right != null) {
+			right.leftTile = right.SetTileReference (this, Vector3.left);
 		}
 	}
 
 	public TileObject SetTileReference (TileObject tileReference, Vector3 pos) {
-
 		Transform child = transform.FindChild (getSpriteName(pos));
 
 		if (tileReference != null && child != null) {
@@ -199,10 +197,18 @@ public class TileObject : MonoBehaviour {
 	}
 
 	public void RemoveTileReferences () {
-		aboveTile = SetTileReference (null, Vector3.up);
-		belowTile = SetTileReference (null, Vector3.down);
-		leftTile = SetTileReference (null, Vector3.left);
-		rightTile = SetTileReference (null, Vector3.right);
+		if (aboveTile != null) {
+			aboveTile.belowTile = aboveTile.SetTileReference (null, Vector3.down);
+		}
+		if (belowTile != null) {
+			belowTile.aboveTile = belowTile.SetTileReference (null, Vector3.up);
+		}
+		if (leftTile != null) {
+			leftTile.rightTile = leftTile.SetTileReference (null, Vector3.right);
+		}
+		if (rightTile != null) {
+			rightTile.leftTile = rightTile.SetTileReference (null, Vector3.left);
+		}
 	}
 
 	#endregion

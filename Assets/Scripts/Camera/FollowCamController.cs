@@ -11,6 +11,7 @@ public class FollowCamController : MonoBehaviour {
 		Vector3 pos = follow.position;
 		pos.z = transform.position.z;
 		pos.y += 0.5F;
+//		transform.position = Vector3.Lerp (transform.position, pos, 0.1F);
 		transform.position = pos;
 	}
 }

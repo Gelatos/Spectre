@@ -180,6 +180,10 @@ public class MovementController : MonoBehaviour {
 				}
 			}
 		}
+
+		if (!grounded && Mathf.Abs (rbody.velocity.y) < 0.01F) {
+			grounded = true;
+		}
 	}
 
 	#endregion

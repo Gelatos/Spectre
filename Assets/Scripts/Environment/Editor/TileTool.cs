@@ -19,20 +19,12 @@ public class TileTool : EditorWindow {
 	protected enum EditMode
 	{
 		Brush,
-		Box
-	}
-
-	protected class EditHistory
-	{
-		TileObject newTileObject;
-		TileObject oldTileObject;
-		Vector3 location;
+		Line
 	}
 
 	// Determine editing capabilities
 	protected EditType editType = EditType.Select;
 	protected EditMode editMode = EditMode.Brush;
-	protected bool isVisible = false;
 	protected Vector2 scrollPos;
 
 	// Editing
@@ -42,20 +34,13 @@ public class TileTool : EditorWindow {
 	protected static Dictionary <int, Dictionary <int, TileObject>> tileGrid = new Dictionary<int, Dictionary<int, TileObject>> ();
 	protected int spriteLayerOrder = 0;
 
+	// Box Mode
+	protected Vector2 tileStartingPoint;
+
 
 	//_______________________________________________ [GUI FUNCTIONS]
 	
 	protected void OnGUI () {
-
-		// set this script to visible
-		if (!isVisible) {
-			if (tileParent != null) {
-				InitTileGrid ();
-			}
-		}
-		isVisible = true;
-
-
 		
 		// ______________________________________ [ TILE OPTIONS ]
 
@@ -213,7 +198,7 @@ public class TileTool : EditorWindow {
 	protected void SceneGUI (SceneView sceneView) {
 
 		// This will have scene events including mouse down on scenes objects
-		if (editType != EditType.Select && isVisible) {
+		if (editType != EditType.Select) {
 
 			HandleUtility.AddDefaultControl(GUIUtility.GetControlID(FocusType.Passive));
 
@@ -222,10 +207,12 @@ public class TileTool : EditorWindow {
 			if (e.type == EventType.mouseDown || e.type == EventType.mouseDrag) {
 
 				// find out where the user clicked
-				Ray ray = Camera.current.ScreenPointToRay(e.mousePosition);
-				Vector3 pos = ray.GetPoint (ray.origin.z * -1);
-				int xKey = (int)Mathf.Floor (pos.x);
-				int yKey = (int)Mathf.Floor (pos.y * -1);
+
+				Vector3 mousePosition = e.mousePosition;
+				mousePosition.y = sceneView.camera.pixelHeight - mousePosition.y;
+				mousePosition = sceneView.camera.ScreenToWorldPoint(mousePosition);
+				int xKey = (int)Mathf.Floor (mousePosition.x);
+				int yKey = (int)Mathf.Floor (mousePosition.y);
 
 				// what selection mode are we using?
 				switch (editMode) {
@@ -236,6 +223,32 @@ public class TileTool : EditorWindow {
 						SetTileObject (xKey, yKey, selectedTile);
 					} else if (editType == EditType.Erase) {
 						RemoveTileObject (xKey, yKey);
+					}
+					break;
+				case EditMode.Line:
+
+					if (e.type == EventType.mouseDown) {
+						// record the first point selected
+						tileStartingPoint = new Vector2 (xKey, yKey);
+
+						if (editType == EditType.Paint) {
+							SetTileObject (xKey, yKey, selectedTile);
+						} else if (editType == EditType.Erase) {
+							RemoveTileObject (xKey, yKey);
+						}
+
+					} else {
+
+						// we've got a start point already. Now create a box depending on where the player mouse is currently
+						for (int x = (int)Mathf.Min (tileStartingPoint.x, xKey); x <= (int)Mathf.Max (tileStartingPoint.x, xKey); x++) {
+							for (int y = (int)Mathf.Min (tileStartingPoint.y, yKey); y <= (int)Mathf.Max (tileStartingPoint.y, yKey); y++) {
+								if (editType == EditType.Paint) {
+									SetTileObject (x, y, selectedTile);
+								} else if (editType == EditType.Erase) {
+									RemoveTileObject (x, y);
+								}
+							}
+						}
 					}
 					break;
 				}
@@ -267,9 +280,10 @@ public class TileTool : EditorWindow {
 		SceneView.onSceneGUIDelegate -= SceneGUI;
 	}
 
-	protected void OnLostFocus () {
-
-		isVisible = false;
+	public void OnSelectionChanged () {
+		if (tileParent != null) {
+			InitTileGrid ();
+		}
 	}
 
 	#endregion
@@ -340,19 +354,27 @@ public class TileTool : EditorWindow {
 		// get the tiles around this new tile
 		TileObject toAbove = null;
 		if (tileGrid.ContainsKey (xKey)) {
-			tileGrid[xKey].TryGetValue ((yKey + 1), out toAbove);
+			if (tileGrid[xKey].ContainsKey(yKey + 1)) {
+				toAbove = tileGrid[xKey][yKey + 1];
+			}
 		}
 		TileObject toBelow = null;
 		if (tileGrid.ContainsKey (xKey)) {
-			tileGrid[xKey].TryGetValue (yKey - 1, out toBelow);
+			if (tileGrid[xKey].ContainsKey(yKey - 1)) {
+				toBelow = tileGrid[xKey][yKey - 1];
+			}
 		}
 		TileObject toLeft = null;
 		if (tileGrid.ContainsKey (xKey - 1)) {
-			tileGrid[xKey - 1].TryGetValue (yKey, out toLeft);
+			if (tileGrid[xKey - 1].ContainsKey(yKey)) {
+				toLeft = tileGrid[xKey - 1][yKey];
+			}
 		}
 		TileObject toRight = null;
 		if (tileGrid.ContainsKey (xKey + 1)) {
-			tileGrid[xKey + 1].TryGetValue (yKey, out toRight);
+			if (tileGrid[xKey + 1].ContainsKey(yKey)) {
+				toRight = tileGrid[xKey + 1][yKey];
+			}
 		}
 
 		string tileName = "";
@@ -364,7 +386,7 @@ public class TileTool : EditorWindow {
 		if (tileGrid.ContainsKey (xKey) && tileGrid [xKey].ContainsKey (yKey)) {
 			if (newTile == null) {
 				// no new tile? Then just refresh the one at its current place
-				tileGrid[xKey][yKey].SetTile (toAbove, toBelow, toLeft, toRight, spriteLayerOrder);
+				tileGrid[xKey][yKey].SetTile (toAbove, toBelow, toLeft, toRight);
 				return;
 			}
 
@@ -379,12 +401,16 @@ public class TileTool : EditorWindow {
 
 		// instatiate the new tile
 		if (newTile != null) {
-			TileObject to = (TileObject)Instantiate (newTile, new Vector3 (xKey + 0.5F, yKey + 0.5F, 0.0F), Quaternion.Euler (Vector3.zero));
+			TileObject to = (TileObject)PrefabUtility.InstantiatePrefab (newTile);
+			to.transform.position = new Vector3 (xKey + 0.5F, yKey + 0.5F, 0.0F);
+			to.transform.eulerAngles = Vector3.zero;
 			to.name = tileName;
+			to.gameObject.layer = tileParent.gameObject.layer;
+			to.GetComponent<SpriteRenderer> ().sortingOrder = spriteLayerOrder;
+			to.transform.SetParent (tileParent);
 		
 			// set up the tile
-			to.SetTile (toAbove, toBelow, toLeft, toRight, spriteLayerOrder);
-			to.transform.SetParent (tileParent);
+			to.SetTile (toAbove, toBelow, toLeft, toRight);
 			AddTileToGrid (xKey, yKey, to);
 		}
 	}
