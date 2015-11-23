@@ -24,6 +24,7 @@ public class MovementController : MonoBehaviour {
 	
 	// components
 	public Transform groundCheck;
+	public Transform[] groundSideChecks;
 	
 	//_______________________________________________ [PROTECTED VARIABLES]
 
@@ -43,6 +44,9 @@ public class MovementController : MonoBehaviour {
 	#region Mono Functions
 
 	protected virtual void Awake () {
+
+		Application.targetFrameRate = 60;
+//		Time.timeScale = 0.1F;
 
 		// set components
 		animator = GetComponent<Animator>();
@@ -79,23 +83,19 @@ public class MovementController : MonoBehaviour {
 		}
 
 		// Perform movement
+		float maxSpeed = maxWalkSpeed;
+		float force = walkSpeedForce;
 		if (isDashing) {
-			if (moveAxis * rbody.velocity.x <= maxDashSpeed) {
-				rbody.AddForce (Vector2.right * moveAxis * dashSpeedForce);
-			}
-			
-			if (Mathf.Abs (rbody.velocity.x) > maxDashSpeed) {
-				rbody.velocity = new Vector2 (Mathf.Sign (rbody.velocity.x) * maxDashSpeed, rbody.velocity.y);
-			}
-		} else {
-			if (moveAxis * rbody.velocity.x <= maxWalkSpeed) {
-				rbody.AddForce (Vector2.right * moveAxis * walkSpeedForce);
-			} 
-
-			if (Mathf.Abs (rbody.velocity.x) > maxWalkSpeed) {
-				rbody.velocity = new Vector2 (Mathf.Sign (rbody.velocity.x) * maxWalkSpeed, rbody.velocity.y);
-			}
+			maxSpeed = maxDashSpeed;
+			force = dashSpeedForce;
 		}
+//		if (moveAxis * rbody.velocity.x <= maxSpeed) {
+//			rbody.AddForce (Vector2.right * moveAxis * force);
+//		}
+		
+//		if (Mathf.Abs (rbody.velocity.x) > maxSpeed) {
+		rbody.velocity = new Vector2 (moveAxis * maxSpeed, rbody.velocity.y);
+//		}
 
 		// Determine if we need to flip the character
 		if (moveAxis > 0 && !isFacingRight) {
@@ -172,11 +172,27 @@ public class MovementController : MonoBehaviour {
 		// check if the character is grounded
 		grounded = Physics2D.Linecast (transform.position, groundCheck.position, alwaysGroundLayers);
 		if (!grounded) {
-			foreach (int i in passThroughGroundLayers) {
-				grounded = Physics2D.Linecast (groundCheck.position, groundCheck.position, 1 << i);
+			foreach (Transform gc in groundSideChecks) {
+				grounded = Physics2D.Linecast (groundCheck.position, gc.position, alwaysGroundLayers);
 				if (grounded) {
-					currentGroundLayer = i;
 					break;
+				}
+			}
+			if (!grounded) {
+				foreach (int i in passThroughGroundLayers) {
+					grounded = Physics2D.Linecast (groundCheck.position, groundCheck.position, 1 << i);
+					if (!grounded) {
+						foreach (Transform gc in groundSideChecks) {
+							grounded = Physics2D.Linecast (groundCheck.position, gc.position, alwaysGroundLayers);
+							if (grounded) {
+								break;
+							}
+						}
+					}
+					if (grounded) {
+						currentGroundLayer = i;
+						break;
+					}
 				}
 			}
 		}

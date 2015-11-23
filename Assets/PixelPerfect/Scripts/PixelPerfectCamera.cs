@@ -14,6 +14,7 @@ public class PixelPerfectCamera : MonoBehaviour {
 	public bool pixelatedPostProcessing=true;
 	public int heightError;
 	public bool showGizmos=true;
+	public Vector2 subpixelOffset=Vector2.zero;
 	public PixelPerfectZoomMode pixelZoomMode=PixelPerfectZoomMode.ConstantZoom;
 	
 	Vector2 cameraOrigin, fixedCameraOrigin;
@@ -25,7 +26,7 @@ public class PixelPerfectCamera : MonoBehaviour {
 	Material postProcessingMaterial;
 	
 	void Awake() {
-		CalculateZoomForClosestResolution();
+		//CalculateZoomForClosestResolution();
 	}
 	
 	void OnEnable() {
@@ -104,9 +105,9 @@ public class PixelPerfectCamera : MonoBehaviour {
 	
 	Vector2 VectorToOrigin(int parallaxLayer=0) {
 		if (normalCamera.orthographic) {
-			return new Vector2(-(normalCamera.pixelWidth-1), normalCamera.pixelHeight-1)*0.5f*PixelPerfect.worldPixelSize/cameraZoom;
+			return (new Vector2(-(normalCamera.pixelWidth-1), normalCamera.pixelHeight-1)+subpixelOffset)*0.5f*PixelPerfect.worldPixelSize/cameraZoom;
 		} else {
-			return new Vector2(-(normalCamera.pixelWidth-1), normalCamera.pixelHeight-1)*0.5f*PixelPerfect.worldPixelSize/cameraZoom*GetParallaxLayerScale(parallaxLayer);
+			return (new Vector2(-(normalCamera.pixelWidth-1), normalCamera.pixelHeight-1)+subpixelOffset)*0.5f*PixelPerfect.worldPixelSize/cameraZoom*GetParallaxLayerScale(parallaxLayer);
 		}
 	}
 	
@@ -136,7 +137,7 @@ public class PixelPerfectCamera : MonoBehaviour {
 	
 	Color GetParallaxLayerColor(int parallaxLayerIndex) {
 		float alpha=((float)parallaxLayerIndex/(float)parallaxLayerCount);
-		return new HSBColor(alpha, 1, 1, 1).ToColor();
+		return new PixelPerfectHSBColor(alpha, 1, 1, 1).ToColor();
 	}
 	
 	float GetCameraDepth() {
@@ -238,6 +239,7 @@ public class PixelPerfectCameraEditor : Editor {
 	SerializedProperty showGizmos;
 	SerializedProperty pixelZoomMode;
 	SerializedProperty cameraZoom;
+	SerializedProperty subpixelOffset;
 	
 	override public void OnInspectorGUI() {
 		FindSerializedProperties();
@@ -252,6 +254,7 @@ public class PixelPerfectCameraEditor : Editor {
 		showGizmos				=serializedObject.FindProperty("showGizmos");
 		pixelZoomMode			=serializedObject.FindProperty("pixelZoomMode");
 		cameraZoom				=serializedObject.FindProperty("cameraZoom");
+		subpixelOffset			=serializedObject.FindProperty("subpixelOffset");
 	}
 	
 	void DrawInspector() {
@@ -262,6 +265,7 @@ public class PixelPerfectCameraEditor : Editor {
 		DrawZoomAndTargetHeight();
 		EditorGUILayout.PropertyField(showGizmos);
 		DrawParallaxField();
+		DrawOffsetField();
 		
 		serializedObject.ApplyModifiedProperties();
 	}
@@ -303,6 +307,10 @@ public class PixelPerfectCameraEditor : Editor {
 			EditorGUILayout.LabelField("(Requires a camera set to 'Perspective')");
 			EditorGUILayout.EndHorizontal();
 		}
+	}
+	
+	void DrawOffsetField() {
+		EditorGUILayout.PropertyField(subpixelOffset);
 	}
 	
 	void DrawZoomAndTargetHeight() {

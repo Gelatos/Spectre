@@ -18,6 +18,7 @@ UPGRADE GUIDE:
 2. Import the new PixelPerfect package
 
 TIPS:
+- As the rendering internals of Unity change between versions, a "Sub-Pixel Offset" property has been added. Adjust it in case you notice artifacts.
 - Use the "Pixelated" render mode for a retro look (avoids sub-texel pixels)
 - Camera Target Pixel Height: how many texels would you like to see vertically
 - For physics & moving objects, set the "PixelPerfectSprite" objects as childs and check the "Use Parent Transform" flag. Then, apply the movement to the parent.

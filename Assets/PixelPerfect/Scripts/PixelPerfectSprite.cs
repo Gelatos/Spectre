@@ -4,14 +4,18 @@ using System.Collections;
 using UnityEditor;
 #endif
 
+[RequireComponent(typeof(SpriteRenderer))]
 public class PixelPerfectSprite : PixelPerfectObject {
 	
 	SpriteRenderer spriteRenderer {get { if (spriteRenderer_==null) {spriteRenderer_=GetComponent<SpriteRenderer>();} return spriteRenderer_;}}
 	SpriteRenderer spriteRenderer_;
 	
+	Rect    spriteRect  {get {return (spriteRenderer.sprite!=null) ? spriteRenderer.sprite.rect  : new Rect(0,0,0,0);}}
+	Vector2 spritePivot {get {return (spriteRenderer.sprite!=null) ? spriteRenderer.sprite.pivot : new Vector2(0,0);}}
+	float spritePixelPerUnit { get { return (spriteRenderer.sprite!=null) ? spriteRenderer.sprite.pixelsPerUnit : PixelPerfect.pixelsPerUnit;}}
+	
 	new protected void LateUpdate() {
 		base.LateUpdate();
-		spriteRenderer.sortingOrder=-parallaxLayer;
 	}
 	
 	override protected float GetTransformScaleFactor() {
@@ -21,16 +25,16 @@ public class PixelPerfectSprite : PixelPerfectObject {
 		} else {
 			parallaxScale=1;
 		}
-		return spriteRenderer.sprite.pixelsPerUnit*PixelPerfect.worldPixelSize*pixelScale*parallaxScale;
+		return spritePixelPerUnit*PixelPerfect.worldPixelSize*pixelScale*parallaxScale;
 	}
 	
 	override protected Vector2 GetPivotToCenter() {
-		Vector2 normalizedPivot=new Vector2(spriteRenderer.sprite.rect.width*0.5f-spriteRenderer.sprite.pivot.x, spriteRenderer.sprite.rect.height*0.5f-spriteRenderer.sprite.pivot.y);
+		Vector2 normalizedPivot=new Vector2(spriteRect.width*0.5f-spritePivot.x, spriteRect.height*0.5f-spritePivot.y);
 		return (new Vector2(normalizedPivot.x, normalizedPivot.y))*pixelScale*PixelPerfect.worldPixelSize;
 	}
 	
 	override protected Vector2 GetCenterToOrigin() {
-		return (new Vector2(-(float)spriteRenderer.sprite.rect.width*0.5f, (float)spriteRenderer.sprite.rect.height*0.5f))*pixelScale*PixelPerfect.worldPixelSize;
+		return (new Vector2(-(float)spriteRect.width*0.5f, (float)spriteRect.height*0.5f))*pixelScale*PixelPerfect.worldPixelSize;
 	}
 }
 
